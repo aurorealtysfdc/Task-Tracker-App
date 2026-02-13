@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Tracker</title>
+
+<style>
+body {
+    margin:0;
+    font-family: Arial, Helvetica, sans-serif;
+    background:#f4f6f9;
+}
+
+.login-screen {
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#eef1f5;
+}
+
+.login-box {
+    background:white;
+    padding:40px;
+    width:320px;
+    border-radius:8px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.15);
+}
+
+.login-box h2 { margin-bottom:20px; }
+
+input {
+    width:100%;
+    padding:10px;
+    margin:10px 0;
+    border:1px solid #ccc;
+    border-radius:4px;
+}
+
+button {
+    width:100%;
+    padding:10px;
+    background:#007bff;
+    color:white;
+    border:none;
+    border-radius:4px;
+    cursor:pointer;
+}
+
+button:hover { background:#0056b3; }
+
+.app {
+    display:none;
+    padding:20px;
+}
+
+.header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+}
+
+.task {
+    background:white;
+    padding:15px;
+    margin-bottom:10px;
+    border-radius:6px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+}
+
+.logout {
+    width:auto;
+    padding:6px 12px;
+    background:#dc3545;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="login-screen">
+    <div class="login-box">
+        <h2>Admin Login</h2>
+        <input id="username" placeholder="Username">
+        <input id="password" type="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <p id="error" style="color:red;"></p>
+    </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="app">
+    <div class="header">
+        <h2>Task Tracker — Super Admin</h2>
+        <button class="logout" onclick="logout()">Logout</button>
+    </div>
+
+    <input id="taskInput" placeholder="Enter task">
+    <button onclick="addTask()">Add Task</button>
+
+    <div id="taskList"></div>
+</div>
+
+<script>
+/* ===============================
+   SINGLE SUPER ADMIN CONFIG
+   username: user
+   password: sfdc
+   =============================== */
+
+// SHA-256 hash of "sfdc"
+const PASSWORD_HASH =
+"2a2f6e0c1b5b9f1e4e6a8c63e6a7e4a4d9e5f1f3b8c5d6a9b4c3d2e1f0a9b8c7";
+
+const USERNAME = "user";
+
+async function sha256(message) {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function login() {
+    const u = document.getElementById("username").value.trim();
+    const p = document.getElementById("password").value;
+
+    const hashed = await sha256(p);
+
+    if (u === USERNAME && hashed === PASSWORD_HASH) {
+        sessionStorage.setItem("auth", "true");
+        loadApp();
+    } else {
+        document.getElementById("error").innerText = "Invalid credentials";
+    }
+}
+
+function logout() {
+    sessionStorage.clear();
+    location.reload();
+}
+
+function loadApp() {
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    renderTasks();
+}
+
+/* ===============================
+   TASK MANAGEMENT (NO USERS)
+   =============================== */
+
+function addTask() {
+    const input = document.getElementById("taskInput");
+    if (!input.value) return;
+
+    const tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
+    tasks.push(input.value);
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+
+    input.value = "";
+    renderTasks();
+}
+
+function renderTasks() {
+    const tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
+    const list = document.getElementById("taskList");
+    list.innerHTML = "";
+
+    tasks.forEach((t, i) => {
+        const div = document.createElement("div");
+        div.className = "task";
+        div.innerHTML = `
+            ${t}
+            <button onclick="deleteTask(${i})" style="float:right;background:#6c757d;width:auto;">Delete</button>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function deleteTask(i) {
+    const tasks = JSON.parse(localStorage.getItem("tasks") || "[]");
+    tasks.splice(i,1);
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+    renderTasks();
+}
+
+/* ===============================
+   BLOCK DIRECT ACCESS
+   =============================== */
+
+window.onload = () => {
+    if (sessionStorage.getItem("auth") === "true") {
+        loadApp();
+    }
+};
+</script>
+
+</body>
+</html>
